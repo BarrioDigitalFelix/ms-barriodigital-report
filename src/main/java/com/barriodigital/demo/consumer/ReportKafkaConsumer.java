@@ -5,6 +5,7 @@ import com.barriodigital.demo.model.ReportEvent;
 import com.barriodigital.demo.repository.ReportEventRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -18,13 +19,20 @@ public class ReportKafkaConsumer {
     private ReportEventRepository repository;
 
     @KafkaListener(topics = "requests.events", groupId = "report-group")
-    public void consumeRequestEvent(KafkaRequestEventDto event) {
+    public void consumeRequestEvent(KafkaRequestEventDto event, Acknowledgment acknowledgment) {
         try {
+            if (event.getEventId() != null && repository.existsByEventId(event.getEventId())) {
+                System.out.println("[ms-report] Evento duplicado ignorado (Idempotencia). EventId: " + event.getEventId());
+                acknowledgment.acknowledge();
+                return;
+            }
+
             LocalDateTime eventTime = (event.getTimestamp() != null)
                     ? LocalDateTime.ofInstant(Instant.ofEpochMilli(event.getTimestamp()), ZoneId.systemDefault())
                     : LocalDateTime.now();
 
             ReportEvent report = ReportEvent.builder()
+                    .eventId(event.getEventId())
                     .requestId(event.getRequestId())
                     .oldStatus(event.getOldStatus())
                     .newStatus(event.getNewStatus())
@@ -33,9 +41,10 @@ public class ReportKafkaConsumer {
                     .build();
 
             repository.save(report);
-            System.out.println("[ms-report] Evento registrado para analítica. Trámite ID: " + event.getRequestId());
+            acknowledgment.acknowledge();
+            System.out.println("[ms-report] Evento registrado y confirmado (Commit Sync). Trámite ID: " + event.getRequestId());
         } catch (Exception e) {
-            System.err.println("[ms-report] Error procesando evento de reporte: " + e.getMessage());
+            System.err.println("[ms-report] Error procesando evento de reporte (Offset NO confirmado): " + e.getMessage());
         }
     }
 }

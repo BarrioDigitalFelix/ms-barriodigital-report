@@ -16,6 +16,9 @@ public class ReportEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true)
+    private String eventId;
+
     private Long requestId;
     private String oldStatus;
     private String newStatus;

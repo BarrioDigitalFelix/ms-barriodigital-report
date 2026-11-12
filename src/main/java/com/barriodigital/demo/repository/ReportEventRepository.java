@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 
 public interface ReportEventRepository extends JpaRepository<ReportEvent, Long> {
 
+    boolean existsByEventId(String eventId);
+
     @Query("SELECT COUNT(e) FROM ReportEvent e WHERE e.createdAt >= :startDate")
     long countTotalEventsSince(@Param("startDate") LocalDateTime startDate);
 

@@ -4,6 +4,7 @@ import lombok.Data;
 
 @Data
 public class KafkaRequestEventDto {
+    private String eventId;
     private Long requestId;
     private String oldStatus;
     private String newStatus;
